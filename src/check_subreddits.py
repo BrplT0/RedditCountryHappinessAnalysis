@@ -1,95 +1,74 @@
 import praw
 import os
 from dotenv import load_dotenv
+from nbconvert.utils.pandoc import pandoc
 from prawcore.exceptions import Redirect, NotFound
+import pandas as pd
+import datetime
 
 
-world = [
-    "worldnews", "asktheworld"
-]
+pd.set_option('display.max_rows', None)
+pd.set_option("display.max_columns", None)
+pd.set_option("display.width", None)
+pd.set_option("display.max_colwidth", None)
 
-north_america = [
-    "usa", "canada", "mexico", "belize", "guatemala", "elsalvador", "honduras",
-    "nicaragua", "costarica", "panama", "bahamas", "cuba", "haiti",
-    "dominican", "jamaica", "barbados", "trinidadandtobago", "grenada"
-]
+subreddits = pd.read_csv("../data/subreddits.csv")
+print(subreddits)
 
-south_america = [
-    "brazil", "argentina", "chile", "peru", "colombia", "venezuela",
-    "ecuador", "bolivia", "paraguay", "uruguay", "guyana", "suriname"
-]
+def connect_reddit():
+    load_dotenv()
+    reddit = praw.Reddit(
+        client_id=os.getenv("client_id"),
+        client_secret=os.getenv("secret"),
+        user_agent="happiness-analyzer/0.1"
+    )
+    print("✅ Connected to Reddit")
+    return reddit
 
-#r/russia is quarantined
-europe = [
-    "iceland", "norway", "sweden", "suomi", "denmark", "estonia", "latvia", "lithuania",
-    "poland", "belarus", "ukraine", "ireland", "unitedkingdom", "luxembourg",
-    "liechtenstein", "switzerland", "belgium", "germany", "czech", "hungary", "slovakia",
-    "austria", "slovenia", "croatia", "serbia", "bulgaria", "romania", "moldova",
-    "montenegro", "greece", "macedonia", "albania", "bosnia", "kosovo",
-    "turkey", "france", "portugal", "spain", "italy", "netherlands", "malta",
-    "monaco", "andorra", "cyprus"
-]
+def check_subreddits(subreddits, reddit, category = "all"):
+    if category == "all":
+        filtered_df = subreddits
+    else:
+        filtered_df = subreddits[subreddits['category'] == category]
+        print(f"Checking {category.capitalize()}")
 
-asia = [
-    "kazakhstan", "mongolia", "china", "iran", "iraq", "syria", "lebanon", "israel",
-    "palestine", "jordan", "saudiarabia", "yemen", "oman", "uae", "qatar",
-    "kuwait", "bahrain", "afghanistan", "pakistan", "india", "nepal",
-    "bangladesh", "bhutan", "srilanka", "maldives", "myanmar", "thailand",
-    "cambodia", "laos", "vietnam", "malaysia", "singapore", "indonesia", "timor",
-    "philippines", "taiwan", "japan", "korea", "dprk", "armenia", "azerbaijan", "sakartvelo",
-    "kyrgyzstan", "tajikistan", "uzbekistan", "turkmenistan", "brunei"
-]
+    for index, row in filtered_df.iterrows():
+        subreddit_name = row['subreddit']
+        country_name = row['country']
+        print(f"\n=== Checking subreddit of {country_name}: r/{subreddit_name} ===\n")
+        if pd.isna(subreddit_name):
+            print(f"⏭️  {country_name}: No subreddit")
+            continue
+        subreddits.at[index, "checked"] = True
+        sub = reddit.subreddit(subreddit_name)
+        subscriber_count = sub.subscribers
+        try:
+            for _ in sub.new(limit=1):
+                pass
+            print("✅ Found")
+            subreddits.at[index, "subscribers"] = subscriber_count
+            subreddits.at[index, "active"] = True
+        except (Redirect, NotFound):
+            print("❌ Not Found")
+            subreddits.at[index, "active"] = False
+        except Exception as e:
+            print(f"❌ Other Error: {e}")
+    return subreddits
 
-oceania = [
-    "australia", "newzealand", "papuanewguinea", "fiji", "vanuatu", "samoa",
-    "tonga", "solomonislands", "micronesia", "marshallislands",
-    "kiribati", "palau", "nauru"
-]
+def approve_subreddit(subreddits_dict, reddit):
+    for sub in subreddits_dict:
+        try:
+            for post in reddit.subreddit(sub).hot(limit=1):
+                print(f"Subreddit: r/{sub}")
+                print(f"Title: {post.title}")
+                print(f"Score: {post.score}")
+                print(f"Comments: {post.num_comments}")
+                print("-" * 50)
+        except (Redirect, NotFound):
+            print(f"❌ r/{sub}: Not Found")
+        except Exception as e:
+            print(f"❌ r/{sub}: Other Error: {e}")
 
-#No r/Chad country subreddit
-africa = [
-    "egypt", "libya", "tunisia", "algeria", "morocco", "westernsahara",
-    "mauritania", "mali", "niger", "sudan", "southsudan",
-    "ethiopia", "eritrea", "djibouti", "somalia", "kenya", "uganda",
-    "rwanda", "burundi", "tanzania", "madagascar", "comoros",
-    "seychelles", "mauritius", "mozambique", "zimbabwe", "zambia",
-    "malawi", "angola", "namibia", "botswana", "southafrica",
-    "lesotho", "swaziland","republicofcongo", "congo", "gabon", "equatorialguinea",
-    "cameroon", "nigeria", "ghana", "ivorycoast", "liberia",
-    "sierraleone", "guinea", "guinea_bissau", "senegal",
-    "gambia", "capeverde", "burkinafaso", "benin", "togo"
-]
-
-allSubreddits = world + north_america + south_america + europe + asia + oceania + africa
-
-subNaN = []
-
-load_dotenv()
-
-reddit = praw.Reddit(
-    client_id=os.getenv("client_id"),
-    client_secret=os.getenv("secret"),
-    user_agent="happiness-analyzer/0.1"
-)
-
-print("Reddit'e bağlanıyor...\n")
-
-for sub in allSubreddits:
-    try:
-        for post in reddit.subreddit(sub).hot(limit=1):
-            print(f"Subreddit: r/{sub}")
-            print(f"Başlık: {post.title}")
-            print(f"Score: {post.score}")
-            print(f"Yorumlar: {post.num_comments}")
-            print("-" * 50)
-    except (Redirect, NotFound):
-        print(f"❌ r/{sub}: Bulunamadı")
-        print("-" * 50)
-        subNaN.append(sub)
-        continue
-    except Exception as e:
-        print(f"❌ r/{sub}: Başka hata - {e}")
-        print("-" * 50)
-        continue
-
-print(subNaN)
+reddit = connect_reddit()
+check_subreddits(subreddits, reddit)
+print(subreddits)
