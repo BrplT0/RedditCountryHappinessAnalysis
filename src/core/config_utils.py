@@ -3,7 +3,7 @@ import os
 
 _config = None
 
-def load_config(path="../data/config/config.ini"):
+def load_config(path="../../data/config/config.ini"):
     global _config
     if _config is None:
         config = configparser.ConfigParser()

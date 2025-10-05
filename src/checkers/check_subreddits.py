@@ -1,36 +1,17 @@
-import praw
-import os
-from dotenv import load_dotenv
 from prawcore.exceptions import Redirect, NotFound
 import pandas as pd
 from datetime import datetime, timedelta
 import warnings
-import sys
-import logging
-from config_utils import get_config
+from src.core.config_utils import get_config
+from src.core.logger import setup_logger
+from src.core.connect_reddit import connect_reddit
+from src.checkers.filter_subreddits import filter_subreddit
+from src.utils.save_csv import save_csv
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=DeprecationWarning)
 
-subreddits = pd.read_csv("../data/raw/subreddits.csv")
-
-def connect_reddit(logger):
-    load_dotenv()
-    reddit = praw.Reddit(
-        client_id=os.getenv("CLIENT_ID"),
-        client_secret=os.getenv("CLIENT_SECRET"),
-        user_agent="happiness-analyzer/0.1"
-    )
-    logger.info("✅ Connected to Reddit")
-    return reddit
-
-def filter_subreddit(subreddits, logger, category):
-    if category == "all":
-        filtered_df = subreddits
-    else:
-        filtered_df = subreddits[subreddits['category'] == category]
-        logger.info(f"Approving {category}")
-    return filtered_df
+subreddits = pd.read_csv("../../data/raw/templates/subreddits.csv")
 
 def check_subreddits(subreddits, reddit, logger, category):
     filtered_df = filter_subreddit(subreddits, logger, category)
@@ -38,9 +19,9 @@ def check_subreddits(subreddits, reddit, logger, category):
     for index, row in filtered_df.iterrows():
         subreddit_name = row['subreddit']
         country_name = row['country']
-        logger.info(f"\n=== Checking subreddit of {country_name}: r/{subreddit_name} ===\n")
+        logger.info(f"⏳ Checking subreddit of {country_name}: r/{subreddit_name} ===")
         if pd.isna(subreddit_name):
-            logger.info(f"⏭️  {country_name}: No subreddit")
+            logger.info(f"⏭️  {country_name}: No subreddit ===")
             continue
         subreddits.at[index, "checked"] = True
         sub = reddit.subreddit(subreddit_name)
@@ -48,14 +29,14 @@ def check_subreddits(subreddits, reddit, logger, category):
         try:
             for _ in sub.new(limit=1):
                 pass
-            logger.info("✅ Found")
+            logger.info("✅ Found ===")
             subreddits.at[index, "subscribers"] = subscriber_count
             subreddits.at[index, "active"] = True
         except (Redirect, NotFound):
-            logger.info("❌ Not Found")
+            logger.info("❌ Not Found ===")
             subreddits.at[index, "active"] = False
         except Exception as e:
-            logger.info(f"❌ Other Error: {e}")
+            logger.info(f"❌ Other Error: {e} ===")
     return subreddits
 
 def approve_subscribers(subreddits, reddit, logger, category, sub_approve_point):
@@ -65,16 +46,16 @@ def approve_subscribers(subreddits, reddit, logger, category, sub_approve_point)
         country_name = row['country']
         subreddit_active = row['active']
         subreddit_subscribers = row['subscribers']
-        logger.info(f"\n=== Approving subscribers of {country_name}: r/{subreddit_name} ===\n")
+        logger.info(f"⏳ Approving subscribers of {country_name}: r/{subreddit_name} ===")
         if pd.isna(subreddit_active):
-            logger.info(f"⏭️  {subreddit_name}: is not active")
+            logger.info(f"⏭️  {subreddit_name}: is not active ===")
             continue
         try:
             if subreddit_subscribers < sub_approve_point:
                 continue
             else:
                 subreddits.at[index, "enough_subscribers"] = True
-                logger.info(f"Subscribers Approved: r/{subreddit_name}")
+                logger.info(f"✅ Subscribers Approved: r/{subreddit_name} ===")
         except Exception as e:
             logger.info(str(e))
     return subreddits
@@ -92,7 +73,7 @@ def count_comments_last_week(sub, logger, comment_approve_point, comment_max_day
                 comment_count = comment_approve_point
                 break
     except Exception as e:
-        logger.info(f"Error counting comments for r/{sub.display_name}: {e}")
+        logger.info(f" Error counting comments for r/{sub.display_name}: {e} ===")
         comment_count = 0
 
     return comment_count
@@ -103,29 +84,29 @@ def approve_comments(subreddits, reddit, logger, category, comment_approve_point
     for index, row in filtered_df.iterrows():
         subreddit_name = row['subreddit']
         country_name = row['country']
-        subscribers = row['subscribers']
         enough_subscribers = row.get('enough_subscribers', False)
 
         if pd.isna(subreddit_name):
-            logger.info(f"⏭️  {country_name}: No subreddit")
+            logger.info(f" ⏭️  {country_name}: No subreddit ===")
             continue
 
         if not enough_subscribers:
+            logger.info(" ❌ Not enough subscribers ===")
             continue
 
-        logger.info(f"\n=== Approving comments of {country_name}: r/{subreddit_name} ===")
+        logger.info(f"⏳ Approving comments of {country_name}: r/{subreddit_name} ===")
 
         try:
             sub = reddit.subreddit(subreddit_name)
             comment_count = count_comments_last_week(sub, logger, comment_approve_point=comment_approve_point, comment_max_days=comment_max_days)
         except (Redirect, NotFound):
-            logger.info(f"❌ r/{subreddit_name} not found")
+            logger.info(f" ❌ r/{subreddit_name} not found ===")
             comment_count = 0
         except Exception as e:
-            logger.info(f"❌ Error: {e}")
+            logger.info(f" ❌ Error: {e} ===")
             comment_count = 0
 
-        logger.info(f"r/{subreddit_name} comments last week: {comment_count}")
+        logger.info(f"🔍 r/{subreddit_name} comments last week: {comment_count} ===")
 
         subreddits.at[index, "comments_last_week"] = comment_count
         subreddits.at[index, "enough_comments"] = comment_count >= comment_approve_point
@@ -137,71 +118,46 @@ def approve_subreddits(subreddits, reddit, logger, category):
 
     for index, row in filtered_df.iterrows():
         subreddit_name = row['subreddit']
-        country_name = row['country']
-        subscribers = row['subscribers']
         enough_subscribers = row.get('enough_subscribers', False)
         enough_comments = row.get('enough_comments', False)
 
         if pd.isna(enough_subscribers) or pd.isna(enough_comments):
             subreddits.at[index, "approved"] = False
             continue
-        logger.info(f"\n=== Approving r/{subreddit_name} ===")
+        logger.info(f"⏳ Approving r/{subreddit_name} ===")
         if enough_subscribers == True and enough_comments == True:
             subreddits.at[index, "approved"] = True
+            logger.info(f"✅ r/{subreddit_name} is APPROVED ===")
         else:
             subreddits.at[index, "approved"] = False
+            logger.info(f"❌ r/{subreddit_name} is NOT APPROVED ===")
 
     return subreddits
-
-def save_subreddits_csv(subreddits, logger):
-    today = datetime.today()
-    today_str = today.strftime("%Y-%m-%d")
-    subreddits.to_csv(f"../data/raw/weekly_checked_subreddits/subreddits_dataframe_{today_str}.csv", index=False)
-    logger.info(f"CSV saved: subreddits_dataframe_{today_str}.csv")
-
-def setup_logger():
-    today_str = datetime.today().strftime("%Y-%m-%d")
-    log_filename = f"../data/log/log_{today_str}.txt"
-
-    logger = logging.getLogger("reddit_logger")
-    logger.setLevel(logging.INFO)
-    logger.handlers = []
-
-    file_handler = logging.FileHandler(log_filename, encoding="utf-8")
-    file_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-    file_handler.setFormatter(file_formatter)
-    logger.addHandler(file_handler)
-
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_formatter = logging.Formatter("%(message)s")
-    console_handler.setFormatter(console_formatter)
-    logger.addHandler(console_handler)
-
-    return logger
 
 def finalize(subreddits):
     logger = setup_logger()
     reddit = connect_reddit(logger)
+    file_location = "../../data/raw/subreddits/"
 
     comment_max_days = get_config("check_subreddits", "comment_max_days", type=int)
     comment_approve_point = get_config("check_subreddits", "comment_approve_point", type=int)
     sub_approve_point = get_config("check_subreddits", "sub_approve_point", type=int)
-    category = get_config("check_subreddits", "category")
+    category = get_config("global", "category")
 
-    logger.info("\n=== Checking Subreddits ===")
+    logger.info("⏳ CHECKING SUBREDDITS ===")
     subreddits_checked = check_subreddits(subreddits, reddit, logger, category)
 
-    logger.info("\n=== Approving Subscribers ===")
+    logger.info("⏳ APPROVING SUBSCRIBERS ===")
     subreddits_approved_subs = approve_subscribers(subreddits_checked, reddit, logger, category, sub_approve_point)
 
-    logger.info("\n=== Approving Comments ===")
+    logger.info("⏳ APPROVING COMMENTS ===")
     subreddits_approved_comments = approve_comments(subreddits_approved_subs, reddit, logger, category, comment_approve_point, comment_max_days)
 
-    logger.info("\n=== Final Approval ===")
+    logger.info("⏳ FINAL APPROVAL ===")
     subreddits_final = approve_subreddits(subreddits_approved_comments, reddit, logger, category)
 
-    save_subreddits_csv(subreddits_final, logger)
-    logger.info("\n=== Process Complete ===")
+    save_csv(subreddits_final, logger, file_location)
+    logger.info("✅ PROCESS COMPLETE ===")
 
 
 finalize(subreddits)
