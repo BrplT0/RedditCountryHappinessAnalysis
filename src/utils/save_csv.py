@@ -1,18 +1,32 @@
 from datetime import datetime
+from pathlib import Path
 
-def save_csv(subreddits, logger, file_location):
-    """
-    :param subreddits: pandas dataframe
-    :param logger: event logger
-    :param file_location: raw file location and name without any datetime and .csv
-    example:
-    save_csv(df, logger, data/raw/filename)
+def parent_root(file_location):
+    current_file = Path(__file__)
+    project_root = current_file.parent.parent.parent
 
-    :return:
-    """
-    today = datetime.today()
-    today_str = today.strftime("%Y-%m-%d")
-    subreddits.to_csv(f"{file_location}{today_str}.csv", index=False)
-    logger.info(f"📁 CSV saved: {today_str}.csv ===")
+    full_path = project_root / file_location
+    target_dir = full_path if not full_path.suffix else full_path.parent
+    target_dir.mkdir(parents=True, exist_ok=True)
 
-    f"../data/raw/subreddits/{today_str}.csv"
+    today_str = datetime.today().strftime("%Y-%m-%d")
+
+    file_path = (
+        full_path / f"{today_str}.csv"
+        if not full_path.suffix
+        else full_path
+    )
+
+    return file_path
+
+
+def save_csv(df, logger, file_location):
+    file_path = parent_root(file_location)
+    df.to_csv(file_path, index=False)
+    project_root = Path(__file__).parent.parent.parent
+    logger.info(f"📁 CSV successfully saved: {file_path.relative_to(project_root)}")
+
+#data/raw/subreddits/
+# C:\Users\Ichigo\PycharmProjects\RedditCountryHappinessAnalysis\src\utils\save_csv.py
+# C:\Users\Ichigo\PycharmProjects\RedditCountryHappinessAnalysis
+# C:\Users\Ichigo\PycharmProjects\RedditCountryHappinessAnalysis\data\raw\subreddits
