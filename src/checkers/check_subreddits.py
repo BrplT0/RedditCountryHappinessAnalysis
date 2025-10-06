@@ -41,6 +41,11 @@ def approve_subscribers(subreddits, logger, category, sub_approve_point):
     for index, row in filtered_df.iterrows():
         subreddit_name = row['subreddit']
         country_name = row['country']
+
+        if pd.isna(subreddit_name):
+            logger.info(f"⏭️ {country_name}: No subreddit, skipping ===")
+            continue
+
         subreddit_active = row.get('active', False)
         subreddit_subscribers = row.get('subscribers', 0)
 
@@ -92,12 +97,16 @@ def approve_subreddits(subreddits, logger, category):
 
     for index, row in filtered_df.iterrows():
         subreddit_name = row['subreddit']
+
+        if pd.isna(subreddit_name):
+            subreddits.at[index, "approved"] = False
+            logger.info(f"⏭️ Skipping null subreddit")
+            continue
+
         enough_subscribers = row.get('enough_subscribers', False)
         enough_comments = row.get('enough_comments', False)
 
-        approved = False
-        if enough_subscribers and enough_comments:
-            approved = True
+        approved = enough_subscribers and enough_comments
 
         subreddits.at[index, "approved"] = approved
         if approved:
