@@ -1,5 +1,6 @@
 from datetime import datetime
 from pathlib import Path
+import csv
 
 def parent_root(file_location):
     current_file = Path(__file__)
@@ -22,7 +23,7 @@ def parent_root(file_location):
 
 def save_csv(df, logger, file_location):
     file_path = parent_root(file_location)
-    df.to_csv(file_path, index=False)
+    df.to_csv(file_path, index=False, encoding='utf-8', quoting=csv.QUOTE_MINIMAL)
     project_root = Path(__file__).parent.parent.parent
     logger.info(f"📁 CSV successfully saved: {file_path.relative_to(project_root)}")
 

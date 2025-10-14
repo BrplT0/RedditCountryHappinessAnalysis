@@ -7,26 +7,29 @@ from src.checkers.check_subreddits import main as check_subreddits_main
 from src.checkers.filter_subreddits import filter_subreddit
 from src.utils.save_csv import save_csv
 from pathlib import Path
+from src.utils.clean_text import clean_text
 
 
-def scrape_a_post(subreddit_name, logger, post):
+def scrape_a_post(subreddit_name, logger, post, post_comment_approve_limit):
     try:
         return {
             "post_id": post.id,
             "subreddit": subreddit_name,
-            "title": post.title,
-            "selftext": post.selftext,
+            "country": None,
+            "title": clean_text(post.title),
+            "selftext": clean_text(post.selftext),
             "score": post.score,
             "num_comments": post.num_comments,
             "created_utc": datetime.utcfromtimestamp(post.created_utc).strftime("%Y-%m-%d"),
-            "post_url": f"https://www.reddit.com/r/{subreddit_name}/comments/{post.id}"
+            "post_url": f"https://www.reddit.com/r/{subreddit_name}/comments/{post.id}",
+            "approved": post.num_comments > post_comment_approve_limit,
         }
     except Exception as e:
         logger.error(f"❌ Error while scraping post in r/{subreddit_name}: {e}")
         return None
 
 
-def scrape_all_posts(subreddits, logger, reddit, post_limit):
+def scrape_all_posts(subreddits, logger, reddit, post_limit, post_comment_approve_limit):
     approved_subs = subreddits[subreddits['approved'] == True]
     posts = []
 
@@ -41,7 +44,7 @@ def scrape_all_posts(subreddits, logger, reddit, post_limit):
         sub = reddit.subreddit(subreddit_name)
 
         for post in sub.new(limit=post_limit):
-            post_dict = scrape_a_post(subreddit_name, logger, post)
+            post_dict = scrape_a_post(subreddit_name, logger, post, post_comment_approve_limit)
             if post_dict:
                 post_dict["country"] = country
                 posts.append(post_dict)
@@ -50,7 +53,7 @@ def scrape_all_posts(subreddits, logger, reddit, post_limit):
     return posts_df
 
 
-def main(subreddits, logger, reddit, post_limit):
+def main(subreddits, logger, reddit, post_limit, post_comment_approve_limit):
     if logger is None:
         logger = setup_logger()
     if reddit is None:
@@ -64,10 +67,12 @@ def main(subreddits, logger, reddit, post_limit):
     file_location = "data/raw/weekly_scrapings/posts/"
 
     logger.info("⏳ SCRAPING POSTS ===")
-    scraped_posts = scrape_all_posts(subreddits, logger, reddit, post_limit)
+    scraped_posts = scrape_all_posts(subreddits, logger, reddit, post_limit, post_comment_approve_limit)
 
     save_csv(scraped_posts, logger, file_location)
     logger.info("✅ PROCESS COMPLETE ===")
+
+    return scraped_posts
 
 
 if __name__ == "__main__":
