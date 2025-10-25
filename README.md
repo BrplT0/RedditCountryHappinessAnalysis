@@ -46,7 +46,7 @@ Social media platforms contain authentic, unfiltered opinions about daily life, 
                  │
       ┌──────────▼──────────┐
       │  Subreddit Checker  │  (197 countries validated)
-      │                     │  (Approval: 20K+ subs, 50+ comments/week, changeable)
+      │                     │  (Changeable approval: 100K+ subs, 1000+ comments/week)
       └──────────┬──────────┘
                  │
       ┌──────────▼──────────┐
@@ -56,7 +56,7 @@ Social media platforms contain authentic, unfiltered opinions about daily life, 
                  │
       ┌──────────▼──────────┐
       │  Comment Scraper    │  ✅ COMPLETE
-      │                     │  (1M+ comments, nested threads)
+      │                     │  (1M+ comments)
       └──────────┬──────────┘
                  │
       ┌──────────▼──────────┐
@@ -181,10 +181,18 @@ CLIENT_SECRET=your_reddit_client_secret
 **2. Data Directory** - Create the following structure:
 ```
 data/
+├── archived/
+├── config/
+│   └── config.ini
+├── dashboard/
+├── logs/
+├── processed/
 ├── raw/
 │   ├── subreddits/
-│   ├── posts/
-│   └── comments/
+│   ├── templates/
+│   └── weekly_scrapings/
+│   │   ├── comments/
+│   │   └── posts/
 ├── processed/
 └── logs/
 ```
@@ -192,15 +200,33 @@ data/
 **3. Config Settings** - Adjust `config/config.ini` parameters if needed:
 ```ini
 [global]
-category = all
+
+#scrapig category of subreddits
+#parameters : "all", "world", "asia", "africa", "europe", "south_america", "north_america", "oceania"
+category = europe
+
+#Scrapes till date - comment_max_days and stops scrapping, default = 7 (one week).
 comment_max_days = 7
 
 [check_subreddits]
-sub_approve_point = 20000      # Minimum subscriber threshold
-comment_approve_point = 50      # Minimum weekly comments
+
+# If comment count is lower than or equal to this value, the subreddit will be approved and scraping stops (default = 1000).
+comment_approve_point = 1000
+
+#If subscriber count is higher than this, subreddit will be approved, default = 100000.
+sub_approve_point = 100000
+
+[reddit_post_scraper]
+
+#declare how many post do you want to scrape, default = 750.
+post_limit = 750
+
+# If comment count in the post is equals or higher than this, post will be approved, default = 50.
+post_comment_approve_limit = 50
 
 [reddit_comment_scraper]
-post_limit = 100
+
+comment_link_limit = 2
 ```
 
 ---
