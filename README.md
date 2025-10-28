@@ -19,8 +19,8 @@ This project leverages Reddit's vast user-generated content to analyze and visua
 
 - 🗺️ **150+ Countries Supported** - Scalable to global analysis
 - 🇪🇺 **European Focus** - Majority of European countries covered
-- 💬 **500K+ Comments Collected** - Processed in ~2 hours
-- 📥 **High-Speed Scraping** - ~300K comments/hour (optimizing further)
+- 💬 **1M+ Comments Collected** - Processed efficiently
+- 📥 **High-Speed Scraping** - ~400K comments/hour (optimized)
 - 🔄 **Weekly Automation Ready** - Self-updating data pipeline
 - 🤖 **Multi-lingual Support** - Handles 20+ European languages
 
@@ -41,12 +41,12 @@ Social media platforms contain authentic, unfiltered opinions about daily life, 
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    Reddit API (PRAW)                    │
+│              Reddit API (PRAW)                          │
 └────────────────┬────────────────────────────────────────┘
                  │
       ┌──────────▼──────────┐
       │  Subreddit Checker  │  (197 countries validated)
-      │                     │  (Changeable approval: 100K+ subs, 1000+ comments/week)
+      │                     │  (Threshold: 100K+ subs, 1000+ comments/week)
       └──────────┬──────────┘
                  │
       ┌──────────▼──────────┐
@@ -56,7 +56,7 @@ Social media platforms contain authentic, unfiltered opinions about daily life, 
                  │
       ┌──────────▼──────────┐
       │  Comment Scraper    │  ✅ COMPLETE
-      │                     │  (500K+ comments)
+      │                     │  (1M+ comments, 30min for 200K)
       └──────────┬──────────┘
                  │
       ┌──────────▼──────────┐
@@ -89,6 +89,7 @@ Social media platforms contain authentic, unfiltered opinions about daily life, 
 - **PRAW 7.7+** - Reddit API wrapper with rate limiting
 - **Pandas** - Data manipulation and CSV processing
 - **Multiprocessing** - Parallel execution for performance
+- **Dotenv** - Environment variable management for secrets
 
 ### Data Collection
 - **Custom Scrapers** - Post and comment collection
@@ -109,46 +110,49 @@ Social media platforms contain authentic, unfiltered opinions about daily life, 
 
 ## 📂 Project Structure
 
+This project follows a standardized architecture separating configuration, assets, source code, and data.
+
 ```
 RedditCountryHappinessAnalysis/
+├── assets/
+│   ├── subreddits.csv            # 🔒 Populated list (Ignored by Git)
+│   └── subreddits.template.csv   # ✅ Public template (Tracked by Git)
+├── config/
+│   └── config.ini                # ✅ Public settings (Tracked by Git)
+├── data/                          # 🔒 Generated outputs (Ignored by Git)
+│   ├── archived/
+│   ├── dashboard/
+│   ├── logs/
+│   ├── processed/
+│   ├── raw/
+│   └── weekly_scrapings/
 ├── src/
-│   ├── analyzers/              # 🔜 NLP and aggregation
-│   │   ├── sentiment_analyzer.py
-│   │   └── data_aggregator.py
-│   ├── checkers/               # ✅ Subreddit validation
-│   │   ├── check_subreddits.py
-│   │   └── filter_subreddits.py
-│   ├── core/                   # ✅ Core utilities
-│   │   ├── connect_reddit.py
-│   │   ├── logger.py
-│   │   └── config_utils.py
-│   ├── scrapers/               # ✅ Data collection
-│   │   ├── subreddit_scraper.py
-│   │   └── comment_scraper.py
-│   ├── utils/                  # ✅ Helper functions
-│   │   ├── save_csv.py
-│   │   └── subreddit_stats.py
-│   └── dashboard/              # 🔜 Visualization
-│       └── app.py
-├── main.py                     # Main execution pipeline
+│   ├── analyzers/                # 🔜 NLP and aggregation
+│   ├── checkers/                 # ✅ Subreddit validation
+│   ├── core/                     # ✅ Core utilities
+│   ├── scrapers/                 # ✅ Data collection
+│   ├── utils/                    # ✅ Helper functions
+│   └── dashboard/                # 🔜 Visualization
+├── .env                          # 🔒 API secrets (Ignored by Git)
+├── main.py                       # Main execution pipeline
 ├── requirements.txt
 ├── .gitignore
 ├── LICENSE
 └── README.md
 ```
 
-> **⚠️ Important:** `/data` directory is excluded from version control for privacy and data size reasons (contains 1M+ comments). The `.env` file with API credentials is also not included. When forking, you'll need to:
-> 1. Set up your own Reddit API credentials in `.env`
-> 2. Create the data directory structure manually
-> 3. Adjust `config/config.ini` parameters to your needs
+> **Note on Project Setup:**
 >
-> This may cause initial setup challenges - this is my first major project and I'm still learning best practices for repository management.
+> This repository is configured for easy setup, but requires manual folder creation.
+> - The `/data` directory is **entirely ignored by Git**. You **must** create the `/data` folder and its subdirectories (`raw`, `logs`, `processed`, etc.) manually for the scripts to run.
+> - You **must** manually create the `.env` file for your API keys.
+> - You **must** manually create the `assets/subreddits.csv` file from the provided template.
 
 ---
 
 ## ⚙️ Setup & Installation
 
-> **Note:** Due to missing `/data` directory and `.env` file, this repository is primarily for showcasing the codebase. Running locally requires additional setup.
+> **Note:** Running locally requires you to provide your own API credentials, subreddit list, and data folder structure.
 
 ### Prerequisites
 - Python 3.9 or higher
@@ -170,63 +174,60 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### Configuration
+### Configuration (Required Steps)
 
-**1. Reddit API Credentials** - Create `.env` in project root:
+**1. Reddit API Credentials (Secrets)**
+
+Create a `.env` file in the project root:
+
 ```env
 CLIENT_ID=your_reddit_client_id
 CLIENT_SECRET=your_reddit_client_secret
 ```
 
-**2. Data Directory** - Create the following structure:
-```
-data/
-├── archived/
-├── config/
-│   └── config.ini
-├── dashboard/
-├── logs/
-├── processed/
-├── raw/
-│   ├── subreddits/
-│   ├── templates/
-│   └── weekly_scrapings/
-│   │   ├── comments/
-│   │   └── posts/
-├── processed/
-└── logs/
+**2. Subreddit List (Input Data)**
+
+The code needs `assets/subreddits.csv` to run. Create this file by duplicating the template:
+
+```bash
+# On Linux/macOS
+cp assets/subreddits.template.csv assets/subreddits.csv
+
+# On Windows
+copy assets\subreddits.template.csv assets\subreddits.csv
 ```
 
-**3. Config Settings** - Adjust `config/config.ini` parameters if needed:
+Now, **edit `assets/subreddits.csv`** and populate it with the subreddits you want to analyze.
+
+**3. Data Directory (Critical Step)**
+
+You **must** manually create the `data/` folder structure that the scripts expect. Create these folders in the project root:
+
+```bash
+mkdir -p data/archived
+mkdir -p data/dashboard
+mkdir -p data/logs
+mkdir -p data/processed
+mkdir -p data/raw/subreddits
+mkdir -p data/weekly_scrapings/comments
+mkdir -p data/weekly_scrapings/posts
+```
+
+**4. General Settings (Public)**
+
+Adjust parameters in `config/config.ini` as needed. The defaults are sensible:
+
 ```ini
 [global]
-
-#scrapig category of subreddits
-#parameters : "all", "world", "asia", "africa", "europe", "south_america", "north_america", "oceania"
+# Scraping category of subreddits
+# Parameters: "all", "world", "asia", "africa", "europe", "south_america", "north_america", "oceania"
 category = europe
 
-#Scrapes till date - comment_max_days and stops scrapping, default = 7 (one week).
+# Scrapes till date - comment_max_days and stops scraping, default = 7 (one week)
 comment_max_days = 7
 
 [check_subreddits]
-
-# If comment count is lower than or equal to this value, the subreddit will be approved and scraping stops (default = 1000).
-comment_approve_point = 1000
-
-#If subscriber count is higher than this, subreddit will be approved, default = 100000.
-sub_approve_point = 100000
-
-[reddit_post_scraper]
-
-#declare how many post do you want to scrape, default = 750.
-post_limit = 750
-
-# If comment count in the post is equals or higher than this, post will be approved, default = 50.
-post_comment_approve_limit = 50
-
-[reddit_comment_scraper]
-
-comment_link_limit = 2
+# ... (and other settings) ...
 ```
 
 ---
@@ -236,29 +237,35 @@ comment_link_limit = 2
 ### Completed Modules ✅
 
 **1. Subreddit Validation**
+
 ```bash
 python -m src.checkers.check_subreddits
 ```
+
 - Validates 197 country subreddits
 - Checks subscriber count (>20K threshold)
 - Analyzes activity (>50 comments/week)
 - Outputs approved subreddits for scraping
 
 **2. Post Collection**
+
 ```bash
 python -m src.scrapers.subreddit_scraper
 ```
+
 - Scrapes posts from approved subreddits
 - Collects last 7 days of content
 - Stores post metadata (title, score, comments count)
 
 **3. Comment Collection**
+
 ```bash
 python -m src.scrapers.comment_scraper
 ```
+
 - Post ID-based comment extraction
 - Nested thread support
-- **Performance: 500K comments in ~2 hours**
+- **Performance: 200K comments in ~30 minutes** (~400K/hour)
 
 ### Full Pipeline (Current State)
 
@@ -281,17 +288,18 @@ Executes:
 | **Countries Supported** | 150+ (Global capability) |
 | **Active Focus** | Majority of European countries |
 | **Comments Collected** | 1,000,000+ |
-| **Scraping Time** | ~2 hours |
-| **Average Speed** | ~500,000 comments/hour |
+| **Scraping Time** | ~30 minutes for 200K comments |
+| **Average Speed** | ~400,000 comments/hour |
 | **Approved Subreddits** | ~40-60 (varies by region/week) |
 
-> **Optimization Note:** Currently working on improving scraping speed through better batching and parallel processing.
+> **Performance Achievement:** Recently collected 200K comments in just 30 minutes through optimized batching and parallel processing!
 
 ---
 
 ## 🧠 Planned Sentiment Analysis
 
 ### Data Cleaning Strategy
+
 - Remove `[deleted]` and `[removed]` comments
 - Filter bot accounts and AutoModerator
 - Eliminate comments < 10 characters
@@ -329,6 +337,7 @@ Executes:
 ## 📊 Planned Dashboard Features
 
 ### Interactive Visualizations
+
 - **Choropleth World Map**: Countries colored by happiness score
 - **Time Series Analysis**: Weekly/monthly trend tracking
 - **Country Rankings**: Top happiest/unhappiest nations
@@ -336,6 +345,7 @@ Executes:
 - **Word Clouds**: Most discussed topics per country
 
 ### Technologies
+
 - **Streamlit**: Rapid dashboard prototyping
 - **Plotly**: Interactive maps and charts
 - **Pandas**: Data aggregation and filtering
@@ -345,18 +355,21 @@ Executes:
 ## 🎓 Key Learnings & Challenges
 
 ### Technical Achievements
+
 - ✅ Handled 500K+ records efficiently with memory-conscious design
 - ✅ Optimized Reddit API usage within rate limits (60 requests/min)
 - ✅ Built modular, maintainable codebase with separation of concerns
 - ✅ Implemented robust logging and error handling
 
 ### Challenges Encountered
+
 - **Rate Limiting**: Learned to batch requests and implement smart delays
-- **Path Management**: Struggled with relative vs absolute paths; resolved with pathlib
+- **Path Management**: Struggled with relative vs absolute paths; **resolved with pathlib & root-level folders**
 - **Data Volume**: Initial memory issues; solved with streaming writes and batch processing
 - **Multi-stage Pipeline**: Coordinating multiple scripts; created main.py orchestrator
 
 ### Skills Developed
+
 - Large-scale data collection and ETL pipelines
 - API optimization and rate limit management
 - Python project architecture and modularity
@@ -364,6 +377,7 @@ Executes:
 - Problem-solving under constraints (API limits, memory)
 
 ### Areas for Improvement
+
 - More efficient data structures for faster processing
 - Better exception handling in edge cases
 - Unit tests for critical functions
@@ -374,18 +388,21 @@ Executes:
 ## 🔮 Roadmap
 
 ### Short-term (Next Steps)
+
 - [ ] Complete data preprocessing module
 - [ ] Implement sentiment analysis (choosing between TextBlob/XLM-RoBERTa)
 - [ ] Build data aggregation pipeline
 - [ ] Create basic Streamlit dashboard
 
 ### Medium-term
+
 - [ ] Expand beyond Europe to global coverage
 - [ ] Optimize scraping speed (target: <1 hour for 500K comments)
 - [ ] Add time series analysis
 - [ ] Implement automated weekly updates
 
 ### Long-term (Future Enhancements)
+
 - [ ] Real-time streaming dashboard
 - [ ] Correlation analysis with geopolitical events
 - [ ] API endpoint for third-party access
@@ -396,12 +413,11 @@ Executes:
 
 ## 🐛 Known Issues & Limitations
 
-- `/data` directory and `.env` not included in repository (requires manual setup)
-- No automated testing suite yet
-- Dashboard not yet implemented
-- Limited to subreddits with sufficient activity (20K+ subscribers)
-- Some smaller countries may lack Reddit presence
-- Performance bottleneck in single-threaded sections
+- **Requires Manual Setup**: `/data` directory, `.env` file (for API keys), and `assets/subreddits.csv` (for input data) must be created manually
+- **No Test Suite**: No automated testing suite yet
+- **Dashboard Pending**: Dashboard not yet implemented
+- **Data Scarcity**: Limited to subreddits with sufficient activity (20K+ subscribers). Some smaller countries may lack Reddit presence
+- **Performance**: Bottlenecks exist in single-threaded sections (under review)
 
 ---
 

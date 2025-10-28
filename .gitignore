@@ -4,23 +4,12 @@
 
 # 1. Security & Secret Inputs
 # Ignore the real, populated (dolu) subreddit list.
-# The .template file (boş şablon) will be tracked.
 assets/subreddits.csv
 
 # 2. Generated Data (Outputs)
-# Ignore all files inside these data folders.
-data/raw/*
-data/processed/*
-data/logs/*
-data/archived/*
-data/dashboard/*
-data/weekly_scrapings/*
-
-# 3. Exceptions
-# DO NOT ignore the .gitkeep files. This rule is what keeps
-# your empty data/ folder structure visible to Git.
-!data/**/.gitkeep
-
+# Ignore the ENTIRE data folder.
+# Anyone cloning must create this folder manually.
+data/
 
 ################################
 # Standart Python .gitignore (Sadeleştirilmiş)
