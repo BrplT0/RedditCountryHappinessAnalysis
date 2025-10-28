@@ -24,7 +24,7 @@ comment_link_limit = get_config("reddit_comment_scraper", "comment_link_limit", 
 scrape_till = datetime.utcnow() - timedelta(get_config("global", "comment_max_days", type=int))
 
 # Step 1: Check subreddits
-subreddit_template = pd.read_csv("data/raw/templates/subreddits.csv")
+subreddit_template = pd.read_csv("assets/subreddits.csv")
 subreddits_checked = check_main(
     subreddits=subreddit_template,
     reddit=reddit,

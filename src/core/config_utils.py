@@ -9,7 +9,7 @@ def load_config(path=None):
         config = configparser.ConfigParser()
         if path is None:
             base_dir = os.path.dirname(os.path.abspath(__file__))
-            path = os.path.join(base_dir, "..", "..", "data", "config", "config.ini")
+            path = os.path.join(base_dir, "..", "..", "config", "config.ini")
 
         path = os.path.abspath(path)
         if not os.path.exists(path):

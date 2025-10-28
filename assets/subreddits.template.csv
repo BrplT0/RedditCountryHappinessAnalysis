@@ -1,0 +1,3 @@
+subreddit,country,category,checked,active,subscribers,enough_subscribers,comments_last_week,enough_comments,approved
+worldnews,World,world,False,,,,,
+asktheworld,World,world,False,,,,,
