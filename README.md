@@ -19,8 +19,8 @@ This project leverages Reddit's vast user-generated content to analyze and visua
 
 - 🗺️ **150+ Countries Supported** - Scalable to global analysis
 - 🇪🇺 **European Focus** - Majority of European countries covered
-- 💬 **1M+ Comments Collected** - Processed in ~2 hours
-- 📥 **High-Speed Scraping** - ~500K comments/hour (optimizing further)
+- 💬 **500K+ Comments Collected** - Processed in ~2 hours
+- 📥 **High-Speed Scraping** - ~300K comments/hour (optimizing further)
 - 🔄 **Weekly Automation Ready** - Self-updating data pipeline
 - 🤖 **Multi-lingual Support** - Handles 20+ European languages
 
@@ -56,7 +56,7 @@ Social media platforms contain authentic, unfiltered opinions about daily life, 
                  │
       ┌──────────▼──────────┐
       │  Comment Scraper    │  ✅ COMPLETE
-      │                     │  (1M+ comments)
+      │                     │  (500K+ comments)
       └──────────┬──────────┘
                  │
       ┌──────────▼──────────┐
@@ -258,7 +258,7 @@ python -m src.scrapers.comment_scraper
 ```
 - Post ID-based comment extraction
 - Nested thread support
-- **Performance: 1M comments in ~2 hours**
+- **Performance: 500K comments in ~2 hours**
 
 ### Full Pipeline (Current State)
 
@@ -345,7 +345,7 @@ Executes:
 ## 🎓 Key Learnings & Challenges
 
 ### Technical Achievements
-- ✅ Handled 1M+ records efficiently with memory-conscious design
+- ✅ Handled 500K+ records efficiently with memory-conscious design
 - ✅ Optimized Reddit API usage within rate limits (60 requests/min)
 - ✅ Built modular, maintainable codebase with separation of concerns
 - ✅ Implemented robust logging and error handling
@@ -381,7 +381,7 @@ Executes:
 
 ### Medium-term
 - [ ] Expand beyond Europe to global coverage
-- [ ] Optimize scraping speed (target: <1 hour for 1M comments)
+- [ ] Optimize scraping speed (target: <1 hour for 500K comments)
 - [ ] Add time series analysis
 - [ ] Implement automated weekly updates
 
