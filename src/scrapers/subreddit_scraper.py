@@ -1,10 +1,7 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 from src.core.logger import setup_logger
 from src.core.connect_reddit import connect_reddit
-from src.core.config_utils import get_config
-from src.checkers.check_subreddits import main as check_subreddits_main
-from src.checkers.filter_subreddits import filter_subreddit
 from src.utils.save_csv import save_csv
 from pathlib import Path
 from src.utils.clean_text import clean_text
@@ -29,9 +26,11 @@ def scrape_a_post(subreddit_name, logger, post, post_comment_approve_limit):
         return None
 
 
-def scrape_all_posts(subreddits, logger, reddit, post_limit, post_comment_approve_limit):
+def scrape_all_posts(subreddits, logger, reddit, post_limit, post_comment_approve_limit, scrape_till):
     approved_subs = subreddits[subreddits['approved'] == True]
     posts = []
+
+    logger.info(f"ℹ️ Sadece {scrape_till.strftime('%Y-%m-%d %H:%M')} tarihinden sonraki post'lar çekilecek.")
 
     for _, row in approved_subs.iterrows():
         subreddit_name = row["subreddit"]
@@ -44,6 +43,13 @@ def scrape_all_posts(subreddits, logger, reddit, post_limit, post_comment_approv
         sub = reddit.subreddit(subreddit_name)
 
         for post in sub.new(limit=post_limit):
+
+            post_time_utc = datetime.utcfromtimestamp(post.created_utc)
+
+            if post_time_utc < scrape_till:
+                logger.info(f"ℹ️ r/{subreddit_name} için tarih limitine ulaşıldı. Diğer sub'a geçiliyor.")
+                break
+
             post_dict = scrape_a_post(subreddit_name, logger, post, post_comment_approve_limit)
             if post_dict:
                 post_dict["country"] = country
@@ -53,7 +59,7 @@ def scrape_all_posts(subreddits, logger, reddit, post_limit, post_comment_approv
     return posts_df
 
 
-def main(subreddits, logger, reddit, post_limit, post_comment_approve_limit):
+def main(subreddits, logger, reddit, post_limit, post_comment_approve_limit, scrape_till):
     if logger is None:
         logger = setup_logger()
     if reddit is None:
@@ -67,7 +73,7 @@ def main(subreddits, logger, reddit, post_limit, post_comment_approve_limit):
     file_location = "data/raw/weekly_scrapings/posts/"
 
     logger.info("⏳ SCRAPING POSTS ===")
-    scraped_posts = scrape_all_posts(subreddits, logger, reddit, post_limit, post_comment_approve_limit)
+    scraped_posts = scrape_all_posts(subreddits, logger, reddit, post_limit, post_comment_approve_limit, scrape_till)
 
     save_csv(scraped_posts, logger, file_location)
     logger.info("✅ PROCESS COMPLETE ===")
