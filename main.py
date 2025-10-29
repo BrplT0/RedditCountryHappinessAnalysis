@@ -13,9 +13,7 @@ from src.scrapers.subreddit_scraper import main as scrape_posts_main
 from src.scrapers.comment_scraper import main as scrape_comments_main
 from src.utils.cleaners import nlp_preprocess
 from src.utils.save_csv import save_csv
-from src.analyzers.sentiment_analyzer import load_sentiment_model, analyze_sentiment_batch
-from src.analyzers.sentiment_analyzer import init_worker, process_chunk
-
+from src.analyzers.sentiment_analyzer import init_worker, process_chunk  # Removed unused imports
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=DeprecationWarning)
@@ -28,11 +26,9 @@ reddit = connect_reddit(logger)
 # Config
 post_limit = get_config("reddit_post_scraper", "post_limit", type=int)
 post_comment_approve_limit = get_config("reddit_post_scraper", "post_comment_approve_limit", type=int)
-comment_link_limit = None if get_config("reddit_comment_scraper", "comment_link_limit", type=int) == -1 else get_config("reddit_comment_scraper", "comment_link_limit", type=int)
+comment_link_limit = None if get_config("reddit_comment_scraper", "comment_link_limit", type=int) == -1 else get_config(
+    "reddit_comment_scraper", "comment_link_limit", type=int)
 scrape_till = datetime.utcnow() - timedelta(get_config("global", "comment_max_days", type=int))
-
-processed_dir = Path("data/processed/preprocessed_comments/")
-CLEANED_FILE_PATH = processed_dir / f"{today_str}.csv"
 
 if __name__ == "__main__":
 
@@ -45,15 +41,18 @@ if __name__ == "__main__":
         processed_df = pd.read_csv(CLEANED_FILE_PATH)
     else:
         logger.warning(f"⚠️ Cleaned data file not found at: {CLEANED_FILE_PATH}")
-        logger.info("⏳ Running the full pipeline...")
-        # Step 1: Check subreddits
+        logger.info("⏳ Running the full pipeline (Steps 1-4)...")
+
+        logger.info("-" * 30 + " STEP 1: CHECK SUBREDDITS " + "-" * 30)
         subreddit_template = pd.read_csv("assets/subreddits.csv")
         subreddits_checked = check_main(
             subreddits=subreddit_template,
             reddit=reddit,
             logger=logger
         )
-        # Step 2: Scrape posts
+        logger.info("✅ Step 1 complete.")
+
+        logger.info("-" * 30 + " STEP 2: SCRAPE POSTS " + "-" * 30)
         posts_scraped = scrape_posts_main(
             subreddits=subreddits_checked,
             logger=logger,
@@ -62,25 +61,39 @@ if __name__ == "__main__":
             post_comment_approve_limit=post_comment_approve_limit,
             scrape_till=scrape_till
         )
-        # Step 3: Scrape comments
-        comments_scraped = scrape_comments_main(
-            posts_scraped=posts_scraped,
-            logger=logger,
-            reddit=reddit,
-            comment_limit=comment_link_limit
-        )
-        # Step 4: Preprocessing
-        processed_df = nlp_preprocess(comments_scraped)
-        save_csv(processed_df, logger, str(processed_dir))
-        logger.info(f"✅ Pipeline finished, cleaned data saved to: {processed_dir}")
+        logger.info("✅ Step 2 complete.")
 
-        if not CLEANED_FILE_PATH.exists():
-            logger.error(
-                "❌ Pipeline failed to create the cleaned data file. Cannot proceed with sentiment analysis. Exiting.")
-            exit()
+        if posts_scraped.empty:
+            logger.warning("⚠️ No posts were scraped. Skipping comment scraping and preprocessing.")
+            processed_df = pd.DataFrame()
+            save_csv(processed_df, logger, str(processed_dir))
         else:
+            logger.info("-" * 30 + " STEP 3: SCRAPE COMMENTS " + "-" * 30)
+            comments_scraped = scrape_comments_main(
+                posts_scraped=posts_scraped,
+                logger=logger,
+                reddit=reddit,
+                comment_limit=comment_link_limit
+            )
+            logger.info("✅ Step 3 complete.")
+
+            if comments_scraped.empty:
+                logger.warning("⚠️ No comments were scraped. Skipping preprocessing.")
+                processed_df = pd.DataFrame()
+                save_csv(processed_df, logger, str(processed_dir))
+            else:
+                logger.info("-" * 30 + " STEP 4: PREPROCESSING COMMENTS " + "-" * 30)
+                processed_df = nlp_preprocess(comments_scraped)
+                save_csv(processed_df, logger, str(processed_dir))
+                logger.info(f"✅ Step 4 complete. Cleaned data saved to: {processed_dir}")
+
+        if not processed_df.empty and not CLEANED_FILE_PATH.exists():
+            logger.error(f"❌ Failed to find or create the cleaned data file at {CLEANED_FILE_PATH}. Exiting.")
+            exit()
+        elif not processed_df.empty and CLEANED_FILE_PATH.exists():
             processed_df = pd.read_csv(CLEANED_FILE_PATH)
 
+            # --- MULTIPROCESSING BLOCK STARTS ---
 
     if processed_df is None or processed_df.empty:
         logger.error("❌ No preprocessed data found or generated. Sentiment analysis cannot proceed. Exiting.")

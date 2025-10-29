@@ -9,6 +9,7 @@ from src.utils.cleaners import clean_text
 
 def scrape_a_post(subreddit_name, logger, post, post_comment_approve_limit):
     try:
+        num_comments = post.num_comments
         return {
             "post_id": post.id,
             "subreddit": subreddit_name,
@@ -16,13 +17,13 @@ def scrape_a_post(subreddit_name, logger, post, post_comment_approve_limit):
             "title": clean_text(post.title),
             "selftext": clean_text(post.selftext),
             "score": post.score,
-            "num_comments": post.num_comments,
+            "num_comments": num_comments,
             "created_utc": datetime.utcfromtimestamp(post.created_utc).strftime("%Y-%m-%d"),
             "post_url": f"https://www.reddit.com/r/{subreddit_name}/comments/{post.id}",
-            "approved": post.num_comments > post_comment_approve_limit,
+            "approved": num_comments >= post_comment_approve_limit,
         }
     except Exception as e:
-        logger.error(f"❌ Error while scraping post in r/{subreddit_name}: {e}")
+        logger.error(f"❌ Error while scraping post {post.id} in r/{subreddit_name}: {e}")
         return None
 
 
@@ -30,30 +31,35 @@ def scrape_all_posts(subreddits, logger, reddit, post_limit, post_comment_approv
     approved_subs = subreddits[subreddits['approved'] == True]
     posts = []
 
-    logger.info(f"ℹ️ Only posts after {scrape_till.strftime('%Y-%m-%d %H:%M')} will be scraped.")
+    logger.info(f"ℹ️ Only posts after {scrape_till.strftime('%Y-%m-%d %H:%M')} UTC will be scraped.")
 
-    for _, row in approved_subs.iterrows():
-        subreddit_name = row["subreddit"]
-        country = row["country"]
+    for row in approved_subs.itertuples():
+        subreddit_name = row.subreddit
+        country = row.country
 
         if pd.isna(subreddit_name):
             continue
 
-        logger.info(f"⏳ Scraping r/{subreddit_name} ({country}) ===")
-        sub = reddit.subreddit(subreddit_name)
+        logger.info(f"⏳ Scraping posts from r/{subreddit_name} ({country}) ===")
+        try:
+            sub = reddit.subreddit(subreddit_name)
+            post_count = 0
+            for post in sub.new(limit=post_limit):
+                post_time_utc = datetime.utcfromtimestamp(post.created_utc)
 
-        for post in sub.new(limit=post_limit):
+                if post_time_utc < scrape_till:
+                    logger.info(f"ℹ️ Date limit reached for r/{subreddit_name}. Moving to next sub.")
+                    break
 
-            post_time_utc = datetime.utcfromtimestamp(post.created_utc)
-
-            if post_time_utc < scrape_till:
-                logger.info(f"ℹ️ Date limit reached for r/{subreddit_name}. Skipping to the next subreddit.")
-                break
-
-            post_dict = scrape_a_post(subreddit_name, logger, post, post_comment_approve_limit)
-            if post_dict:
-                post_dict["country"] = country
-                posts.append(post_dict)
+                post_dict = scrape_a_post(subreddit_name, logger, post, post_comment_approve_limit)
+                if post_dict:
+                    post_dict["country"] = country
+                    posts.append(post_dict)
+                    post_count += 1
+            logger.info(f"✅ Scraped {post_count} posts from r/{subreddit_name}.")
+        except Exception as e:
+            logger.error(f"❌ Failed to scrape posts from r/{subreddit_name}: {e}")
+            continue
 
     posts_df = pd.DataFrame(posts)
     return posts_df
@@ -68,18 +74,17 @@ def main(subreddits, logger, reddit, post_limit, post_comment_approve_limit, scr
     if isinstance(subreddits, (str, Path)):
         today_str = datetime.today().strftime("%Y-%m-%d")
         csv_path = Path(subreddits) / f"{today_str}.csv"
-        subreddits = pd.read_csv(csv_path)
+        try:
+            subreddits = pd.read_csv(csv_path)
+        except FileNotFoundError:
+             logger.error(f"❌ Subreddit check file not found at: {csv_path}. Cannot scrape posts.")
+             return pd.DataFrame()
+
 
     file_location = "data/raw/weekly_scrapings/posts/"
 
-    logger.info("⏳ SCRAPING POSTS ===")
     scraped_posts = scrape_all_posts(subreddits, logger, reddit, post_limit, post_comment_approve_limit, scrape_till)
 
     save_csv(scraped_posts, logger, file_location)
-    logger.info("✅ PROCESS COMPLETE ===")
 
     return scraped_posts
-
-
-if __name__ == "__main__":
-    main()
