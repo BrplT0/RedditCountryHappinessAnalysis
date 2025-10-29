@@ -4,7 +4,7 @@ from src.core.logger import setup_logger
 from src.core.connect_reddit import connect_reddit
 from src.utils.save_csv import save_csv
 from pathlib import Path
-from src.utils.clean_text import clean_text
+from src.utils.cleaners import clean_text
 
 
 def scrape_a_post(subreddit_name, logger, post, post_comment_approve_limit):
@@ -30,7 +30,7 @@ def scrape_all_posts(subreddits, logger, reddit, post_limit, post_comment_approv
     approved_subs = subreddits[subreddits['approved'] == True]
     posts = []
 
-    logger.info(f"ℹ️ Sadece {scrape_till.strftime('%Y-%m-%d %H:%M')} tarihinden sonraki post'lar çekilecek.")
+    logger.info(f"ℹ️ Only posts after {scrape_till.strftime('%Y-%m-%d %H:%M')} will be scraped.")
 
     for _, row in approved_subs.iterrows():
         subreddit_name = row["subreddit"]
@@ -47,7 +47,7 @@ def scrape_all_posts(subreddits, logger, reddit, post_limit, post_comment_approv
             post_time_utc = datetime.utcfromtimestamp(post.created_utc)
 
             if post_time_utc < scrape_till:
-                logger.info(f"ℹ️ r/{subreddit_name} için tarih limitine ulaşıldı. Diğer sub'a geçiliyor.")
+                logger.info(f"ℹ️ Date limit reached for r/{subreddit_name}. Skipping to the next subreddit.")
                 break
 
             post_dict = scrape_a_post(subreddit_name, logger, post, post_comment_approve_limit)
