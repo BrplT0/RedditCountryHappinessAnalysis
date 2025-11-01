@@ -1,0 +1,17 @@
+# Core Data & API
+pandas
+numpy
+praw
+prawcore
+python-dotenv
+
+# NLP & ML
+# Installs the CPU-only version of PyTorch by default.
+# For optional GPU support, see README.md installation guide.
+torch
+transformers
+sentencepiece
+
+# Dashboard
+streamlit
+plotly
