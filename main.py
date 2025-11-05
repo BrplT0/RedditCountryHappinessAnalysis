@@ -215,7 +215,6 @@ if __name__ == "__main__":
             scores_dir = Path("data/processed/sentiment_scores/")
             scores_dir.mkdir(parents=True, exist_ok=True)
             save_csv(sentiment_scores, logger, str(scores_dir))
-            logger.info(f"Scored data saved to: {scores_dir}")
         else:
             logger.warning("⚠️ Sentiment analysis resulted in an empty DataFrame. No data was saved.")
 
@@ -227,12 +226,32 @@ if __name__ == "__main__":
     logger.info("✅ Done aggregating sentiment scores.")
 
     if not aggregated_scores.empty:
-        agg_dir = Path("data/processed/aggregated_scores/")
-        agg_dir.mkdir(parents=True, exist_ok=True)
-        agg_path = agg_dir / f"{today_str}.csv"
-        temp_agg_path = agg_dir / f"{today_str}.csv.tmp"
-        aggregated_scores.to_csv(temp_agg_path, index=False)
-        shutil.move(temp_agg_path, agg_path)
-        logger.info(f"Aggregated data saved to: {agg_path}")
+
+        live_dir = Path("data/dashboard/live/")
+        timeseries_dir = Path("data/dashboard/time_series/")
+
+        live_dir.mkdir(parents=True, exist_ok=True)
+        timeseries_dir.mkdir(parents=True, exist_ok=True)
+
+        live_files = list(live_dir.glob("*.csv"))
+
+        for old_file_path in live_files:
+            try:
+                archive_target_path = timeseries_dir / old_file_path.name
+                shutil.move(str(old_file_path), str(archive_target_path))
+                logger.info(f"Successfully archived {old_file_path.name} to time_series.")
+            except Exception as e:
+                logger.error(f"Failed to archive {old_file_path.name}: {e}")
+
+        new_agg_path = live_dir / f"{today_str}.csv"
+        temp_agg_path = live_dir / f"{today_str}.csv.tmp"
+
+        try:
+            aggregated_scores.to_csv(temp_agg_path, index=False)
+            shutil.move(temp_agg_path, new_agg_path)
+            logger.info(f"✅ New aggregated (live) data saved to: {new_agg_path}")
+        except Exception as e:
+            logger.error(f"❌ Failed to save new aggregated data: {e}")
+
     else:
         logger.warning("⚠️ Aggregating resulted in an empty DataFrame. No data was saved.")
