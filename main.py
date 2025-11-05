@@ -1,11 +1,13 @@
 import time
 import warnings
+
 import pandas as pd
 from pathlib import Path
 from datetime import datetime, timedelta
 from multiprocessing import Pool
 import numpy as np
 import torch
+import shutil
 
 # Core modules
 from src.core.connect_reddit import connect_reddit
@@ -24,6 +26,7 @@ from src.analyzers.sentiment_analyzer import (
     init_worker,
     process_chunk
 )
+from src.analyzers.data_aggregator import aggregate_main
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=DeprecationWarning)
@@ -130,7 +133,7 @@ if __name__ == "__main__":
     else:
         logger.info("-" * 50)
 
-        final_scored_df = pd.DataFrame()
+        sentiment_scores = pd.DataFrame()
         start_time = time.time()
 
         if analysis_device.lower() == "gpu":
@@ -154,13 +157,13 @@ if __name__ == "__main__":
 
                 results_df = pd.DataFrame(sentimental_analysis_results)
                 processed_df = processed_df.reset_index(drop=True)
-                final_scored_df = pd.concat([processed_df, results_df], axis=1)
+                sentiment_scores = pd.concat([processed_df, results_df], axis=1)
 
             except torch.OutOfMemoryError:
                 logger.error("=" * 50)
                 logger.error("❌ FATAL ERROR: CUDA Out of Memory.")
                 logger.error(
-                    "Your GPU does not have enough VRAM (e.g., 2GB MX350) to run this 1.6GB XLM-RoBERTa model.")
+                    "Your GPU does not have enough VRAM to run this model.")
                 logger.error("The model might load, but there is no memory left for the analysis batch.")
                 logger.error(
                     "SOLUTION: Change 'device_type = gpu' to 'device_type = cpu' in your config.ini to use the CPU multiprocessing path.")
@@ -195,23 +198,41 @@ if __name__ == "__main__":
                 results_list = pool.map(process_chunk, df_chunks)
                 logger.info("Parallel analysis complete. Concatenating results...")
 
-            final_scored_df = pd.concat(results_list, ignore_index=True)
-            logger.info(f"Successfully analyzed {len(final_scored_df)} comments in total.")
+            sentiment_scores = pd.concat(results_list, ignore_index=True)
+            logger.info(f"Successfully analyzed {len(sentiment_scores)} comments in total.")
 
-        # --- FINISH ---
+        # --- SENTIMENT ANALYSIS FINISH ---
 
         end_time = time.time()
         total_time_seconds = end_time - start_time
         total_time_minutes = total_time_seconds / 60
 
         logger.info("-" * 50)
-        logger.info(f"✅✅✅ SENTIMENT ANALYSIS COMPLETE (Mode: {analysis_device.upper()}) ✅✅✅")
+        logger.info(f"✅ SENTIMENT ANALYSIS COMPLETE (Mode: {analysis_device.upper()})")
         logger.info(f"Total Time: {total_time_minutes:.2f} minutes.")
 
-        if not final_scored_df.empty:
+        if not sentiment_scores.empty:
             scores_dir = Path("data/processed/sentiment_scores/")
             scores_dir.mkdir(parents=True, exist_ok=True)
-            save_csv(final_scored_df, logger, str(scores_dir))
+            save_csv(sentiment_scores, logger, str(scores_dir))
             logger.info(f"Scored data saved to: {scores_dir}")
         else:
             logger.warning("⚠️ Sentiment analysis resulted in an empty DataFrame. No data was saved.")
+
+    logger.info("-" * 30 + " STEP 6: AGGREGATING SCORES " + "-" * 30)
+    logger.info(f"🚀 Step 6: Aggregating Sentimental Data...")
+    aggregated_scores = aggregate_main(
+        sentiment_scores=sentiment_scores,
+    )
+    logger.info("✅ Done aggregating sentiment scores.")
+
+    if not aggregated_scores.empty:
+        agg_dir = Path("data/processed/aggregated_scores/")
+        agg_dir.mkdir(parents=True, exist_ok=True)
+        agg_path = agg_dir / f"{today_str}.csv"
+        temp_agg_path = agg_dir / f"{today_str}.csv.tmp"
+        aggregated_scores.to_csv(temp_agg_path, index=False)
+        shutil.move(temp_agg_path, agg_path)
+        logger.info(f"Aggregated data saved to: {agg_path}")
+    else:
+        logger.warning("⚠️ Aggregating resulted in an empty DataFrame. No data was saved.")

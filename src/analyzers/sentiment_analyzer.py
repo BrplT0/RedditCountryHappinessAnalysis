@@ -68,13 +68,12 @@ def process_chunk(df_chunk):
 
         if current_model_name and current_model_name.lower() == "distilbert":
             distilbert_map = {
-                'LABEL_0': 'negative',
-                'LABEL_1': 'positive'
+                'LABEL_0': 'NEGATIVE',
+                'LABEL_1': 'POSITIVE'
             }
             results_df['sentiment_label'] = results_df['label'].replace(distilbert_map)
         else:
-            results_df['label_id'] = results_df['label'].str.split('_').str[-1].astype(int)
-            results_df['sentiment_label'] = results_df['label_id'].replace(model_label_map)
+            results_df['sentiment_label'] = results_df['label'].str.upper()
 
         df_chunk = df_chunk.reset_index(drop=True)
         df_chunk['sentiment_label'] = results_df['sentiment_label']

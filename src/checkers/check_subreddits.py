@@ -114,9 +114,9 @@ def approve_subreddits(subreddits, logger, category):
 
         subreddits.at[index, "approved"] = approved
         if approved:
-            logger.info(f"✅✅✅ r/{subreddit_name} is APPROVED ===")
+            logger.info(f"✅ r/{subreddit_name} is APPROVED ===")
         else:
-            logger.info(f"❌❌❌ r/{subreddit_name} is NOT APPROVED (Active: {subreddit_active}, Subs OK: {enough_subscribers}, Comments OK: {enough_comments}) ===")
+            logger.info(f"❌ r/{subreddit_name} is NOT APPROVED (Active: {subreddit_active}, Subs OK: {enough_subscribers}, Comments OK: {enough_comments}) ===")
 
     return subreddits
 
