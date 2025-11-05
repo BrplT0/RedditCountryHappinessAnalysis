@@ -5,15 +5,14 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from multiprocessing import Pool
 import numpy as np
-import os
 import torch
 
-# Core modüller
+# Core modules
 from src.core.connect_reddit import connect_reddit
 from src.core.logger import setup_logger
 from src.core.config_utils import get_config
 
-# Pipeline adımları
+# Pipeline steps
 from src.checkers.check_subreddits import main as check_main
 from src.scrapers.subreddit_scraper import main as scrape_posts_main
 from src.scrapers.comment_scraper import main as scrape_comments_main
@@ -53,7 +52,7 @@ if __name__ == "__main__":
         logger.error("Exiting.")
         exit()
 
-    # --- Step 1-5: Veri Çekme veya Dosyadan Yükleme ---
+    # --- Step 1-7 ---
     processed_dir = Path("data/processed/preprocessed_comments/")
     CLEANED_FILE_PATH = processed_dir / f"{today_str}.csv"
 
@@ -113,10 +112,10 @@ if __name__ == "__main__":
                 processed_df = pd.DataFrame()
                 save_csv(processed_df, logger, str(processed_dir))
             else:
-                logger.info("-" * 30 + " STEP 7: PREPROCESSING COMMENTS " + "-" * 30)
+                logger.info("-" * 30 + " STEP 4: PREPROCESSING COMMENTS " + "-" * 30)
                 processed_df = nlp_preprocess(comments_scraped)
                 save_csv(processed_df, logger, str(processed_dir))
-                logger.info(f"✅ Step 7 complete. Cleaned data saved to: {processed_dir}")
+                logger.info(f"✅ Step 4 complete. Cleaned data saved to: {processed_dir}")
 
         if not processed_df.empty and not CLEANED_FILE_PATH.exists():
             logger.error(f"❌ Failed to find or create the cleaned data file at {CLEANED_FILE_PATH}. Exiting.")
@@ -124,20 +123,20 @@ if __name__ == "__main__":
         elif not processed_df.empty and CLEANED_FILE_PATH.exists():
             processed_df = pd.read_csv(CLEANED_FILE_PATH)
 
-            # --- Step 5: Sentiment Analysis (CPU veya GPU) ---
+            # --- Step 5: Sentiment Analysis (CPU or GPU) ---
 
     if processed_df is None or processed_df.empty:
         logger.error("❌ No preprocessed data found or generated. Sentiment analysis cannot proceed. Exiting.")
     else:
         logger.info("-" * 50)
 
-        final_scored_df = pd.DataFrame()  # Başlangıçta boş tanımla
-        start_time = time.time()  # Zamanı burada başlat
+        final_scored_df = pd.DataFrame()
+        start_time = time.time()
 
         if analysis_device.lower() == "gpu":
-            # --- GPU YOLU (try-except bloğu eklendi) ---
+            # --- GPU PATH ---
             try:
-                logger.info(f"🚀 Step 8.G: Starting GPU Sentiment Analysis (NVIDIA)...")
+                logger.info(f"🚀 Step 5: Starting GPU Sentiment Analysis (NVIDIA)...")
 
                 logger.info("Loading XLM-RoBERTa model onto GPU memory...")
                 model_pipeline = load_sentiment_model()
@@ -184,9 +183,9 @@ if __name__ == "__main__":
                 exit()
 
         else:
-            # --- CPU YOLU (Multiprocessing) ---
+            # --- CPU PATH ---
             num_cores = cpu_cores_config
-            logger.info(f"🚀 Step 8.C: Starting Multiprocessing Sentiment Analysis ({num_cores} Cores)...")
+            logger.info(f"🚀 Step 5: Starting Multiprocessing Sentiment Analysis ({num_cores} Cores)...")
             logger.info(f"Total {len(processed_df)} comments will be split across {num_cores} cores.")
 
             df_chunks = np.array_split(processed_df, num_cores)
@@ -199,7 +198,7 @@ if __name__ == "__main__":
             final_scored_df = pd.concat(results_list, ignore_index=True)
             logger.info(f"Successfully analyzed {len(final_scored_df)} comments in total.")
 
-        # --- ORTAK BİTİŞ BLOĞU ---
+        # --- FINISH ---
 
         end_time = time.time()
         total_time_seconds = end_time - start_time
@@ -209,7 +208,6 @@ if __name__ == "__main__":
         logger.info(f"✅✅✅ SENTIMENT ANALYSIS COMPLETE (Mode: {analysis_device.upper()}) ✅✅✅")
         logger.info(f"Total Time: {total_time_minutes:.2f} minutes.")
 
-        # Sadece başarılıysa kaydet
         if not final_scored_df.empty:
             scores_dir = Path("data/processed/sentiment_scores/")
             scores_dir.mkdir(parents=True, exist_ok=True)
