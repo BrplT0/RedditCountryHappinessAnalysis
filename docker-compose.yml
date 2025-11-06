@@ -28,6 +28,23 @@ services:
     tty: true
     stdin_open: true
 
+  scheduler:
+    container_name: reddit-happiness-scheduler
+    build: .
+    restart: always
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config
+      - /etc/localtime:/etc/localtime:ro
+    env_file:
+      - .env
+    entrypoint: sh -c "
+      apt update && apt install -y cron && apt clean;
+
+      echo '0 1 * * 0 python /app/main.py' | crontab -;
+
+      cron -f"
+
 networks:
   default:
     name: reddit_analytics_network
