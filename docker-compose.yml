@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+
+  dashboard:
+    container_name: reddit-happiness-dashboard
+    build: .
+    restart: always
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config
+    env_file:
+      - .env
+    command: streamlit run src/dashboard/app.py --server.port 8501 --server.address 0.0.0.0
+
+  pipeline:
+    container_name: reddit-happiness-pipeline
+    build: .
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config
+    env_file:
+      - .env
+    command: python main.py
+
+    tty: true
+    stdin_open: true
+
+networks:
+  default:
+    name: reddit_analytics_network
