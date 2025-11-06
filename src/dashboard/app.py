@@ -318,7 +318,7 @@ with tab1:
             )
         )
 
-        st.plotly_chart(fig_map, use_container_width=True, config={'displayModeBar': False})
+        st.plotly_chart(fig_map, width="stretch", config={'displayModeBar': False})
 
     except Exception as e:
         st.error(f"⚠️ Error rendering map: {e}")
@@ -358,7 +358,7 @@ with tab2:
             showlegend=False
         )
 
-        st.plotly_chart(fig_top, use_container_width=True, config={'displayModeBar': False})
+        st.plotly_chart(fig_top, width="stretch", config={'displayModeBar': False})
 
     with col2:
         st.markdown(f"#### 📉 Bottom {show_top} Countries")
@@ -390,7 +390,7 @@ with tab2:
             showlegend=False
         )
 
-        st.plotly_chart(fig_bottom, use_container_width=True, config={'displayModeBar': False})
+        st.plotly_chart(fig_bottom, width="stretch", config={'displayModeBar': False})
 
     st.markdown("#### 📊 Score Distribution")
     fig_hist = px.histogram(
@@ -411,7 +411,7 @@ with tab2:
         bargap=0.1
     )
 
-    st.plotly_chart(fig_hist, use_container_width=True, config={'displayModeBar': False})
+    st.plotly_chart(fig_hist, width="stretch", config={'displayModeBar': False})
 
 with tab3:
     if not df_timeseries.empty:
@@ -478,7 +478,7 @@ with tab3:
                 showlegend=False
             )
 
-            st.plotly_chart(fig_trend, use_container_width=True, config={'displayModeBar': False})
+            st.plotly_chart(fig_trend, width="stretch", config={'displayModeBar': False})
 
             col1, col2, col3, col4 = st.columns(4)
 
